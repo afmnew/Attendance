@@ -21,7 +21,7 @@
 <body>
 
 <div class="card">
-  <!-- TEACHER VIEW (Shown when no ?sheetId= in URL) -->
+  <!-- TEACHER PORTAL -->
   <div id="teacherView" style="display: none;">
     <h2 style="margin-top:0; color:#1a73e8;">Attendance Setup Portal</h2>
     <div class="instructions">
@@ -47,7 +47,7 @@
     </div>
   </div>
 
-  <!-- STUDENT VIEW (Shown when scanning QR code) -->
+  <!-- STUDENT FORM -->
   <div id="studentView" style="display: none;">
     <h2 style="margin-top:0;">Lecture Attendance</h2>
 
@@ -68,7 +68,7 @@
 
 <script>
   // Paste your Apps Script Web App URL here:
-  const CENTRAL_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxPN-f8G-gfhKLh8y6d_M4kA8x1N5X_WtjwiK1c2cKLH2nqxf8lwIg4glGvI9OwjSefqA/exec";
+  const CENTRAL_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQlHj8vRjWInf56ak7izfyaBr4GJietbj6ThXli9TgzECVXG6frmhdGsbuxkPoyq9sAg/exec";
 
   const urlParams = new URLSearchParams(window.location.search);
   const TARGET_SHEET_ID = urlParams.get('sheetId');
@@ -145,7 +145,7 @@
           }
         })
         .catch(() => {
-          status.textContent = "Submission failed. Please check your connection and retry.";
+          status.textContent = "Submission failed. Please check connection and retry.";
           status.style.color = "red";
         });
       },
