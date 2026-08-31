@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lecture Attendance</title>
+  <!-- Google Sign-In SDK -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; max-width: 420px; margin: auto; }
+    .card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+    .field { margin-bottom: 15px; }
+    label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 14px; }
+    input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 15px; }
+    button { width: 100%; padding: 12px; background: #0b57d0; color: #fff; font-size: 16px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; }
+    button:disabled { background: #aaa; cursor: not-allowed; }
+    #status { margin-top: 15px; font-size: 14px; font-weight: 600; line-height: 1.4; }
+    #userInfo { background: #e8f0fe; padding: 8px 12px; border-radius: 4px; margin-bottom: 15px; font-size: 13px; display: none; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h2>Lecture Attendance</h2>
+  <div id="sessionNotice" style="color: #666; font-size: 13px; margin-bottom: 15px;"></div>
+
+  <!-- Google Sign-In Container -->
+  <div id="authSection" class="field">
+    <label>1. Sign in with Google:</label>
+    <div id="g_id_onload"
+         data-client_id="YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com"
+         data-callback="handleCredentialResponse"
+         data-auto_prompt="false">
+    </div>
+    <div class="g_id_signin" data-type="standard" data-size="large" data-width="100%"></div>
+  </div>
+
+  <div id="userInfo">Signed in as: <strong id="userEmail"></strong></div>
+
+  <!-- Attendance Input Details -->
+  <div class="field">
+    <label>Full Name:</label>
+    <input type="text" id="studentName" placeholder="e.g., Alex Johnson" required>
+  </div>
+  <div class="field">
+    <label>Seat Number:</label>
+    <input type="text" id="seatNumber" placeholder="e.g., A-12" required>
+  </div>
+
+  <button id="submitBtn" onclick="submitAttendance()" disabled>Submit Attendance</button>
+  <div id="status"></div>
+</div>
+
+<script>
+  // 1. READ CONFIGURATION & OPTIONAL TIME WINDOW
+  // QR Link Format: https://user.github.io/repo/?script=YOUR_APPS_SCRIPT_URL&open=1725100000000&close=1725101200000
+  const urlParams = new URLSearchParams(window.location.search);
+  const SCRIPT_URL = urlParams.get('https://script.google.com/macros/s/AKfycbyx0sBvMHMSjRHY24N85gZgmtPqPWgUk_oBRANdk72TQ-nZBvg72-l2Wo2Uh74r2bO6gg/exec');
+  const OPEN_TIME = parseInt(urlParams.get('open')) || 0;
+  const CLOSE_TIME = parseInt(urlParams.get('close')) || 0;
+
+  let verifiedEmail = "";
+
+  // Check window times on page load
+  window.onload = function() {
+    const now = Date.now();
+    const notice = document.getElementById("sessionNotice");
+
+    if (OPEN_TIME && now < OPEN_TIME) {
+      notice.innerHTML = `<span style="color:red">Opens at: ${new Date(OPEN_TIME).toLocaleTimeString()}</span>`;
+    } else if (CLOSE_TIME && now > CLOSE_TIME) {
+      notice.innerHTML = `<span style="color:red">Closed at: ${new Date(CLOSE_TIME).toLocaleTimeString()}</span>`;
+      document.getElementById("submitBtn").disabled = true;
+    } else if (CLOSE_TIME) {
+      notice.innerHTML = `Window closes at: <strong>${new Date(CLOSE_TIME).toLocaleTimeString()}</strong>`;
+    }
+  };
+
+  // 2. PARSE GOOGLE AUTH CREDENTIAL
+  function parseJwt(token) {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+  }
+
+  function handleCredentialResponse(response) {
+    const responsePayload = parseJwt(response.credential);
+    verifiedEmail = responsePayload.email;
+
+    document.getElementById("userEmail").textContent = verifiedEmail;
+    document.getElementById("userInfo").style.display = "block";
+    document.getElementById("authSection").style.display = "none";
+    document.getElementById("submitBtn").disabled = false;
+  }
+
+  // 3. CAPTURE COORDINATES & SUBMIT
+  function submitAttendance() {
+    const status = document.getElementById("status");
+    const name = document.getElementById("studentName").value.trim();
+    const seat = document.getElementById("seatNumber").value.trim();
+
+    if (!verifiedEmail) {
+      status.textContent = "Please sign in with Google first.";
+      status.style.color = "red";
+      return;
+    }
+    if (!name || !seat) {
+      status.textContent = "Please fill in all fields.";
+      status.style.color = "red";
+      return;
+    }
+    if (!SCRIPT_URL) {
+      status.textContent = "Configuration error: Script URL missing from link.";
+      status.style.color = "red";
+      return;
+    }
+
+    status.textContent = "Acquiring location...";
+    status.style.color = "#444";
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const userLat = pos.coords.latitude;
+        const userLng = pos.coords.longitude;
+
+        status.textContent = "Submitting attendance...";
+
+        fetch(SCRIPT_URL, {
+          method: "POST",
+          body: JSON.stringify({
+            email: verifiedEmail,
+            name: name,
+            seat: seat,
+            latitude: userLat,
+            longitude: userLng,
+            startTime: OPEN_TIME,
+            endTime: CLOSE_TIME
+          }),
+          headers: { "Content-Type": "text/plain;charset=utf-8" }
+        })
+        .then(res => res.json())
+        .then(data => {
+          status.textContent = data.message;
+          status.style.color = data.status === "success" ? "green" : "red";
+          if (data.status === "success") {
+            document.getElementById("studentName").value = "";
+            document.getElementById("seatNumber").value = "";
+            document.getElementById("submitBtn").disabled = true;
+          }
+        })
+        .catch(() => {
+          status.textContent = "Server communication failed. Please retry.";
+          status.style.color = "red";
+        });
+      },
+      (err) => {
+        status.textContent = "Location permission is required to record coordinates.";
+        status.style.color = "red";
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }
+</script>
+</body>
+</html>
