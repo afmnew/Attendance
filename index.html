@@ -3,138 +3,141 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lecture Attendance</title>
-  <!-- Google Sign-In SDK -->
-  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <title>Attendance System</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 20px; max-width: 420px; margin: auto; }
-    .card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-    .field { margin-bottom: 15px; }
-    label { display: block; font-weight: 600; margin-bottom: 5px; font-size: 14px; }
-    input { width: 100%; padding: 10px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 15px; }
-    button { width: 100%; padding: 12px; background: #0b57d0; color: #fff; font-size: 16px; font-weight: bold; border: none; border-radius: 4px; cursor: pointer; }
-    button:disabled { background: #aaa; cursor: not-allowed; }
-    #status { margin-top: 15px; font-size: 14px; font-weight: 600; line-height: 1.4; }
-    #userInfo { background: #e8f0fe; padding: 8px 12px; border-radius: 4px; margin-bottom: 15px; font-size: 13px; display: none; }
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f6f8; padding: 20px; max-width: 480px; margin: auto; }
+    .card { background: white; border: 1px solid #ddd; border-radius: 8px; padding: 24px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+    .instructions { background: #e8f0fe; border-left: 4px solid #1a73e8; padding: 12px; margin-bottom: 20px; font-size: 14px; line-height: 1.5; border-radius: 0 4px 4px 0; }
+    .field { margin-bottom: 16px; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; }
+    input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; font-size: 15px; }
+    button { width: 100%; padding: 12px; background: #1a73e8; color: white; border: none; border-radius: 4px; font-size: 16px; font-weight: bold; cursor: pointer; }
+    #status { margin-top: 15px; font-size: 14px; font-weight: 600; }
+    #qrSection { display: none; text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; }
+    #qrcode { display: inline-block; margin: 15px 0; }
   </style>
 </head>
 <body>
 
 <div class="card">
-  <h2>Lecture Attendance</h2>
-  <div id="sessionNotice" style="color: #666; font-size: 13px; margin-bottom: 15px;"></div>
-
-  <!-- Google Sign-In Container -->
-  <div id="authSection" class="field">
-    <label>1. Sign in with Google:</label>
-    <div id="g_id_onload"
-         data-client_id="YOUR_GOOGLE_OAUTH_CLIENT_ID.apps.googleusercontent.com"
-         data-callback="handleCredentialResponse"
-         data-auto_prompt="false">
+  <!-- TEACHER VIEW (Shown when no ?sheetId= in URL) -->
+  <div id="teacherView" style="display: none;">
+    <h2 style="margin-top:0; color:#1a73e8;">Attendance Setup Portal</h2>
+    <div class="instructions">
+      <strong>Instructions:</strong>
+      <ol style="margin: 8px 0 0 0; padding-left: 20px;">
+        <li>Create a new blank <a href="https://sheets.new" target="_blank">Google Sheet</a>.</li>
+        <li>Click <strong>Share</strong> and add the administrator's designated email as an <strong>Editor</strong>.</li>
+        <li>Paste your Google Sheet link below and click <strong>Generate QR Code</strong>.</li>
+      </ol>
     </div>
-    <div class="g_id_signin" data-type="standard" data-size="large" data-width="100%"></div>
+
+    <div class="field">
+      <label>Paste Your Google Sheet Link:</label>
+      <input type="text" id="sheetInput" placeholder="https://docs.google.com/spreadsheets/d/.../edit" required>
+    </div>
+
+    <button onclick="generateTeacherQR()">Generate Classroom QR Code</button>
+
+    <div id="qrSection">
+      <h3>Scan to Mark Attendance</h3>
+      <div id="qrcode"></div>
+      <p style="font-size: 13px; color: #555;">Project this QR code on the lecture screen.</p>
+    </div>
   </div>
 
-  <div id="userInfo">Signed in as: <strong id="userEmail"></strong></div>
+  <!-- STUDENT VIEW (Shown when scanning QR code) -->
+  <div id="studentView" style="display: none;">
+    <h2 style="margin-top:0;">Lecture Attendance</h2>
 
-  <!-- Attendance Input Details -->
-  <div class="field">
-    <label>Full Name:</label>
-    <input type="text" id="studentName" placeholder="e.g., Alex Johnson" required>
-  </div>
-  <div class="field">
-    <label>Seat Number:</label>
-    <input type="text" id="seatNumber" placeholder="e.g., A-12" required>
-  </div>
+    <div class="field">
+      <label>Google Account Email:</label>
+      <input type="email" id="studentEmail" placeholder="yourname@gmail.com" required>
+    </div>
 
-  <button id="submitBtn" onclick="submitAttendance()" disabled>Submit Attendance</button>
-  <div id="status"></div>
+    <div class="field">
+      <label>Full Name:</label>
+      <input type="text" id="studentName" placeholder="e.g., Alex Johnson" required>
+    </div>
+
+    <div class="field">
+      <label>Seat Number:</label>
+      <input type="text" id="seatNumber" placeholder="e.g., A-12" required>
+    </div>
+
+    <button id="submitBtn" onclick="submitAttendance()">Submit Attendance</button>
+    <div id="status"></div>
+  </div>
 </div>
 
 <script>
-  // 1. READ CONFIGURATION & OPTIONAL TIME WINDOW
-  // QR Link Format: https://user.github.io/repo/?script=YOUR_APPS_SCRIPT_URL&open=1725100000000&close=1725101200000
+  // Paste your Central Apps Script Web App URL here:
+  const CENTRAL_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxSP12HJxJdSpXhDKwp1kE23PusO2yotsfayfLotk7vQkuaKYGz7PK4S9tzC0YVExU4SQ/exec";
+
   const urlParams = new URLSearchParams(window.location.search);
-  const SCRIPT_URL = urlParams.get('https://script.google.com/macros/s/AKfycbyx0sBvMHMSjRHY24N85gZgmtPqPWgUk_oBRANdk72TQ-nZBvg72-l2Wo2Uh74r2bO6gg/exec');
-  const OPEN_TIME = parseInt(urlParams.get('open')) || 0;
-  const CLOSE_TIME = parseInt(urlParams.get('close')) || 0;
+  const TARGET_SHEET_ID = urlParams.get('sheetId');
 
-  let verifiedEmail = "";
-
-  // Check window times on page load
   window.onload = function() {
-    const now = Date.now();
-    const notice = document.getElementById("sessionNotice");
-
-    if (OPEN_TIME && now < OPEN_TIME) {
-      notice.innerHTML = `<span style="color:red">Opens at: ${new Date(OPEN_TIME).toLocaleTimeString()}</span>`;
-    } else if (CLOSE_TIME && now > CLOSE_TIME) {
-      notice.innerHTML = `<span style="color:red">Closed at: ${new Date(CLOSE_TIME).toLocaleTimeString()}</span>`;
-      document.getElementById("submitBtn").disabled = true;
-    } else if (CLOSE_TIME) {
-      notice.innerHTML = `Window closes at: <strong>${new Date(CLOSE_TIME).toLocaleTimeString()}</strong>`;
+    if (!TARGET_SHEET_ID) {
+      document.getElementById("teacherView").style.display = "block";
+    } else {
+      document.getElementById("studentView").style.display = "block";
     }
   };
 
-  // 2. PARSE GOOGLE AUTH CREDENTIAL
-  function parseJwt(token) {
-    const base64Url = token.split('.')[1];
-    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-    return JSON.parse(decodeURIComponent(atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')));
+  // Teacher QR Generation
+  function extractSheetId(input) {
+    input = input.trim();
+    const match = input.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
+    return match ? match[1] : input;
   }
 
-  function handleCredentialResponse(response) {
-    const responsePayload = parseJwt(response.credential);
-    verifiedEmail = responsePayload.email;
+  function generateTeacherQR() {
+    const rawInput = document.getElementById("sheetInput").value;
+    const sheetId = extractSheetId(rawInput);
 
-    document.getElementById("userEmail").textContent = verifiedEmail;
-    document.getElementById("userInfo").style.display = "block";
-    document.getElementById("authSection").style.display = "none";
-    document.getElementById("submitBtn").disabled = false;
+    if (!sheetId) {
+      alert("Please paste a valid Google Sheet link.");
+      return;
+    }
+
+    const qrUrl = window.location.origin + window.location.pathname + `?sheetId=${sheetId}`;
+    const qrContainer = document.getElementById("qrcode");
+    qrContainer.innerHTML = "";
+    new QRCode(qrContainer, { text: qrUrl, width: 256, height: 256 });
+    document.getElementById("qrSection").style.display = "block";
   }
 
-  // 3. CAPTURE COORDINATES & SUBMIT
+  // Student Form Submission
   function submitAttendance() {
     const status = document.getElementById("status");
+    const email = document.getElementById("studentEmail").value.trim();
     const name = document.getElementById("studentName").value.trim();
     const seat = document.getElementById("seatNumber").value.trim();
 
-    if (!verifiedEmail) {
-      status.textContent = "Please sign in with Google first.";
-      status.style.color = "red";
-      return;
-    }
-    if (!name || !seat) {
+    if (!email || !name || !seat) {
       status.textContent = "Please fill in all fields.";
       status.style.color = "red";
       return;
     }
-    if (!SCRIPT_URL) {
-      status.textContent = "Configuration error: Script URL missing from link.";
-      status.style.color = "red";
-      return;
-    }
 
-    status.textContent = "Acquiring location...";
+    status.textContent = "Recording GPS location...";
     status.style.color = "#444";
 
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const userLat = pos.coords.latitude;
-        const userLng = pos.coords.longitude;
-
         status.textContent = "Submitting attendance...";
 
-        fetch(SCRIPT_URL, {
+        fetch(CENTRAL_SCRIPT_URL, {
           method: "POST",
           body: JSON.stringify({
-            email: verifiedEmail,
+            sheetId: TARGET_SHEET_ID,
+            email: email,
             name: name,
             seat: seat,
-            latitude: userLat,
-            longitude: userLng,
-            startTime: OPEN_TIME,
-            endTime: CLOSE_TIME
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude
           }),
           headers: { "Content-Type": "text/plain;charset=utf-8" }
         })
@@ -145,16 +148,17 @@
           if (data.status === "success") {
             document.getElementById("studentName").value = "";
             document.getElementById("seatNumber").value = "";
+            document.getElementById("studentEmail").value = "";
             document.getElementById("submitBtn").disabled = true;
           }
         })
         .catch(() => {
-          status.textContent = "Server communication failed. Please retry.";
+          status.textContent = "Submission failed. Please check network and retry.";
           status.style.color = "red";
         });
       },
       (err) => {
-        status.textContent = "Location permission is required to record coordinates.";
+        status.textContent = "Location permission is required to submit.";
         status.style.color = "red";
       },
       { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
