@@ -21,7 +21,7 @@
 <body>
 
 <div class="card">
-  <!-- TEACHER PORTAL -->
+  <!-- TEACHER VIEW (Shown when no ?sheetId= in URL) -->
   <div id="teacherView" style="display: none;">
     <h2 style="margin-top:0; color:#1a73e8;">Attendance Setup Portal</h2>
     <div class="instructions">
@@ -47,7 +47,7 @@
     </div>
   </div>
 
-  <!-- STUDENT FORM -->
+  <!-- STUDENT VIEW (Shown when scanning QR code) -->
   <div id="studentView" style="display: none;">
     <h2 style="margin-top:0;">Lecture Attendance</h2>
 
@@ -61,6 +61,11 @@
       <input type="text" id="studentName" placeholder="e.g., Alex Johnson" required>
     </div>
 
+    <div class="field">
+      <label>Group Number:</label>
+      <input type="text" id="studentGroup" placeholder="e.g., Group 3 or Section B" required>
+    </div>
+
     <button id="submitBtn" onclick="submitAttendance()">Submit Attendance</button>
     <div id="status"></div>
   </div>
@@ -68,7 +73,7 @@
 
 <script>
   // Paste your Apps Script Web App URL here:
-  const CENTRAL_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwUTKUix7bGRqiWHT_cJQk8vDQeQZRZlvwiHr7Xr3v1O5_5mh5JkLzPL-dOCLy6CESX3Q/exec";
+  const CENTRAL_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwmev2HlKGWUrTC_xT2vcKIA3G2BltYD7PQ_UyeNJO0IHuWCteXz5gDPX-Ms2dhOLUQ7Q/exec";
 
   const urlParams = new URLSearchParams(window.location.search);
   const TARGET_SHEET_ID = urlParams.get('sheetId');
@@ -109,8 +114,9 @@
     const status = document.getElementById("status");
     const studentId = document.getElementById("studentId").value.trim();
     const name = document.getElementById("studentName").value.trim();
+    const group = document.getElementById("studentGroup").value.trim();
 
-    if (!studentId || !name) {
+    if (!studentId || !name || !group) {
       status.textContent = "Please fill in all fields.";
       status.style.color = "red";
       return;
@@ -127,11 +133,11 @@
           sheetId: TARGET_SHEET_ID,
           studentId: studentId,
           name: name,
+          group: group,
           latitude: pos.coords.latitude,
           longitude: pos.coords.longitude
         });
 
-        // Use standard POST without restrictive headers to avoid CORS blocking
         fetch(CENTRAL_SCRIPT_URL, {
           method: "POST",
           mode: "no-cors",
@@ -141,14 +147,14 @@
           body: payload
         })
         .then(() => {
-          // In no-cors mode, the browser succeeds and logs the row directly into the sheet
           status.textContent = "Attendance marked successfully!";
           status.style.color = "green";
           document.getElementById("studentId").value = "";
           document.getElementById("studentName").value = "";
+          document.getElementById("studentGroup").value = "";
           document.getElementById("submitBtn").disabled = true;
         })
-        .catch((err) => {
+        .catch(() => {
           status.textContent = "Submission failed. Please check connection and retry.";
           status.style.color = "red";
         });
