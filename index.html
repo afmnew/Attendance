@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Attendance System</title>
+  <title>Classroom Attendance</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f6f8; padding: 20px; max-width: 480px; margin: auto; }
@@ -28,7 +28,7 @@
       <strong>Instructions:</strong>
       <ol style="margin: 8px 0 0 0; padding-left: 20px;">
         <li>Create a new blank <a href="https://sheets.new" target="_blank">Google Sheet</a>.</li>
-        <li>Click <strong>Share</strong> and add the administrator's designated email as an <strong>Editor</strong>.</li>
+        <li>Click <strong>Share</strong> and add the administrator's email as an <strong>Editor</strong>.</li>
         <li>Paste your Google Sheet link below and click <strong>Generate QR Code</strong>.</li>
       </ol>
     </div>
@@ -52,18 +52,13 @@
     <h2 style="margin-top:0;">Lecture Attendance</h2>
 
     <div class="field">
-      <label>Google Account Email:</label>
-      <input type="email" id="studentEmail" placeholder="yourname@gmail.com" required>
+      <label>Student ID / Roll Number:</label>
+      <input type="text" id="studentId" placeholder="e.g., 20241089" required>
     </div>
 
     <div class="field">
       <label>Full Name:</label>
       <input type="text" id="studentName" placeholder="e.g., Alex Johnson" required>
-    </div>
-
-    <div class="field">
-      <label>Seat Number:</label>
-      <input type="text" id="seatNumber" placeholder="e.g., A-12" required>
     </div>
 
     <button id="submitBtn" onclick="submitAttendance()">Submit Attendance</button>
@@ -72,8 +67,8 @@
 </div>
 
 <script>
-  // Paste your Central Apps Script Web App URL here:
-  const CENTRAL_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxSP12HJxJdSpXhDKwp1kE23PusO2yotsfayfLotk7vQkuaKYGz7PK4S9tzC0YVExU4SQ/exec";
+  // Paste your Apps Script Web App URL here:
+  const CENTRAL_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxPN-f8G-gfhKLh8y6d_M4kA8x1N5X_WtjwiK1c2cKLH2nqxf8lwIg4glGvI9OwjSefqA/exec";
 
   const urlParams = new URLSearchParams(window.location.search);
   const TARGET_SHEET_ID = urlParams.get('sheetId');
@@ -86,7 +81,7 @@
     }
   };
 
-  // Teacher QR Generation
+  // Teacher QR Generator
   function extractSheetId(input) {
     input = input.trim();
     const match = input.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
@@ -112,11 +107,10 @@
   // Student Form Submission
   function submitAttendance() {
     const status = document.getElementById("status");
-    const email = document.getElementById("studentEmail").value.trim();
+    const studentId = document.getElementById("studentId").value.trim();
     const name = document.getElementById("studentName").value.trim();
-    const seat = document.getElementById("seatNumber").value.trim();
 
-    if (!email || !name || !seat) {
+    if (!studentId || !name) {
       status.textContent = "Please fill in all fields.";
       status.style.color = "red";
       return;
@@ -133,9 +127,8 @@
           method: "POST",
           body: JSON.stringify({
             sheetId: TARGET_SHEET_ID,
-            email: email,
+            studentId: studentId,
             name: name,
-            seat: seat,
             latitude: pos.coords.latitude,
             longitude: pos.coords.longitude
           }),
@@ -146,14 +139,13 @@
           status.textContent = data.message;
           status.style.color = data.status === "success" ? "green" : "red";
           if (data.status === "success") {
+            document.getElementById("studentId").value = "";
             document.getElementById("studentName").value = "";
-            document.getElementById("seatNumber").value = "";
-            document.getElementById("studentEmail").value = "";
             document.getElementById("submitBtn").disabled = true;
           }
         })
         .catch(() => {
-          status.textContent = "Submission failed. Please check network and retry.";
+          status.textContent = "Submission failed. Please check your connection and retry.";
           status.style.color = "red";
         });
       },
